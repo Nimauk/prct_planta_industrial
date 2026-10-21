@@ -1,0 +1,7 @@
+# Entorno
+.venv/
+__pycache__/
+*.pyc
+
+# Editor
+.zed/
