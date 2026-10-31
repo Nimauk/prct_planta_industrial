@@ -5,3 +5,7 @@ __pycache__/
 
 # Editor
 .zed/
+
+# Generado por el programa
+vendor/
+capturas/
