@@ -1,6 +1,7 @@
 from pathlib import Path
 import numpy as np
 import mujoco
+from .objeto_industrial import ObjetoIndustrial
 from . import robot
 
 
@@ -533,6 +534,16 @@ class PlantaIndustrial:
         self.robot_ids = robot.get_robot_ids(self.model)
         self.robot_state = robot.new_robot_state()
         robot.initialize_robot(self.model, self.data, self.robot_ids, self.robot_state)
+
+        formas = [ "cubo", "cilindro", "caja", "cilindro", "caja"]
+        segmentos = [3, 1, 2, 3, 0]
+
+        for i in range(5):
+            bid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, f"obj{i}")
+            jid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, f"obj{i}_free")
+            dof = self.model.jnt_dofadr[jid]
+
+            self.objetos.append(ObjetoIndustrial(i, formas[i], bid, dof, segmentos[i]))
 
     def actualizar(self):
         pass
