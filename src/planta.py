@@ -557,7 +557,13 @@ class PlantaIndustrial:
             self.cintas.append(CintaTransportadora(nombres[i], velocidades[i], direcciones[i]))
 
     def actualizar(self):
-        pass
+        for objeto in self.objetos:
+            cinta = self.cintas[objeto.segmento]
+            if cinta.esta_activa():
+                self.data.xfrc_applied[objeto.body_id, 0] = (cinta.velocidad - self.data.qvel[objeto.dof_adr]) * VEL_KP
+
+
+        mujoco.mj_step(self.model, self.data)
 
     def procesar_teclado(self):
         pass
