@@ -538,7 +538,7 @@ class PlantaIndustrial:
         robot.initialize_robot(self.model, self.data, self.robot_ids, self.robot_state)
 
         formas = [ "cubo", "cilindro", "caja", "cilindro", "caja"]
-        segmentos = [3, 1, 2, 3, 0]
+        segmentos = [0, 1, 2, 3, 0]
 
         # Inicializar objetos
         for i in range(5):
@@ -557,13 +557,47 @@ class PlantaIndustrial:
             self.cintas.append(CintaTransportadora(nombres[i], velocidades[i], direcciones[i]))
 
     def actualizar(self):
-        for objeto in self.objetos:
-            cinta = self.cintas[objeto.segmento]
-            if cinta.esta_activa():
-                self.data.xfrc_applied[objeto.body_id, 0] = (cinta.velocidad - self.data.qvel[objeto.dof_adr]) * VEL_KP
+        self.data.xfrc_applied[:] = 0.0
 
+        for objeto in self.objetos:
+            self.cambiar_cinta(objeto)
+            self.empujar_pieza(objeto)
 
         mujoco.mj_step(self.model, self.data)
+
+    def empujar_pieza(self, objeto):
+        cinta = self.cintas[objeto.segmento]
+        if not cinta.esta_activa():
+            return
+
+        eje = cinta.eje()
+        velocidad_pieza = self.data.qvel[objeto.dof_adr + eje]
+        fuerza = cinta.calcular_fuerza(velocidad_pieza)
+        self.data.xfrc_applied[objeto.body_id, eje] = fuerza
+
+        if eje == 1:
+            velocidad_x = self.data.qvel[objeto.dof_adr]
+            posicion_x = self.data.xpos[objeto.body_id][0]
+            fuerza_x = cinta.calcular_fuerza_lateral(velocidad_x, posicion_x)
+            self.data.xfrc_applied[objeto.body_id, 0] = fuerza_x
+
+    def cambiar_cinta(self, objeto):
+        posicion = self.data.xpos[objeto.body_id]
+        pos_x = posicion[0]
+        pos_y = posicion[1]
+
+        if (objeto.segmento == 0 and pos_x >= CORNER_SWITCH):
+            objeto.actualizar_segmento(1)
+
+        elif (objeto.segmento == 1 and pos_y >= CORNER_SWITCH):
+            objeto.actualizar_segmento(2)
+
+        elif (objeto.segmento == 2 and pos_x <= -CORNER_SWITCH):
+            objeto.actualizar_segmento(3)
+
+        elif (objeto.segmento == 3 and pos_y <= -CORNER_SWITCH):
+            objeto.actualizar_segmento(0)
+
 
     def procesar_teclado(self):
         pass
