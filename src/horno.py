@@ -26,4 +26,11 @@ class Horno:
         return self.temperatura
 
     def actualizar_color(self, model):
-        pass
+        if self.temperatura < 50:
+            color = [0.1, 0.3, 1.0, 1.0]
+        elif self.temperatura < 100:
+            color = [1.0, 0.6, 0.1, 1.0]
+        else:
+            color = [1.0, 0.1, 0.1, 1.0]
+
+        model.geom_rgba[self.geom_id] = color
