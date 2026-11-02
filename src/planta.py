@@ -1,6 +1,7 @@
 from pathlib import Path
 import numpy as np
 import mujoco
+import mujoco.viewer
 from .objeto_industrial import ObjetoIndustrial
 from .cinta_transportadora import CintaTransportadora
 from . import robot
@@ -562,4 +563,15 @@ class PlantaIndustrial:
         pass
 
     def ejecutar(self):
-        pass
+        self.inicializar()
+        self.visor = mujoco.viewer.launch_passive(self.model, self.data)
+        self.visor.cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
+        self.visor.cam.fixedcamid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, "overview")
+
+        try:
+            while self.visor.is_running():
+                self.actualizar()
+                self.visor.sync()
+                self.procesar_teclado()
+        finally:
+            self.visor.close()

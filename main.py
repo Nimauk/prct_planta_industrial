@@ -3,8 +3,7 @@ from src.planta import PlantaIndustrial
 
 def main():
     planta = PlantaIndustrial()
-    planta.inicializar()
-    print(len(planta.cintas))
+    planta.ejecutar()
 
 
 if __name__ == "__main__":
