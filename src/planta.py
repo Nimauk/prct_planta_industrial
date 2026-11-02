@@ -2,6 +2,7 @@ from pathlib import Path
 import numpy as np
 import mujoco
 from .objeto_industrial import ObjetoIndustrial
+from .cinta_transportadora import CintaTransportadora
 from . import robot
 
 
@@ -538,12 +539,21 @@ class PlantaIndustrial:
         formas = [ "cubo", "cilindro", "caja", "cilindro", "caja"]
         segmentos = [3, 1, 2, 3, 0]
 
+        # Inicializar objetos
         for i in range(5):
             bid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, f"obj{i}")
             jid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, f"obj{i}_free")
             dof = self.model.jnt_dofadr[jid]
 
             self.objetos.append(ObjetoIndustrial(i, formas[i], bid, dof, segmentos[i]))
+
+        # Inicializar cintas
+        nombres = ["Cinta 1", "Cinta 2", "Cinta 3", "Cinta 4", "Cinta 5"]
+        velocidades = [BELT_SPEED, BELT_SPEED, BELT_SPEED, BELT_SPEED, BRANCH_SPEED]
+        direcciones = ["+X", "+Y", "-X", "-Y", "-X"]
+
+        for i in range(5):
+            self.cintas.append(CintaTransportadora(nombres[i], velocidades[i], direcciones[i]))
 
     def actualizar(self):
         pass
