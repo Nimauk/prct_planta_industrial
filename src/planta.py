@@ -4,6 +4,7 @@ import mujoco
 import mujoco.viewer
 from .objeto_industrial import ObjetoIndustrial
 from .cinta_transportadora import CintaTransportadora
+from .horno import Horno
 from . import robot
 
 
@@ -556,12 +557,19 @@ class PlantaIndustrial:
         for i in range(5):
             self.cintas.append(CintaTransportadora(nombres[i], velocidades[i], direcciones[i]))
 
+        # Horno
+        body_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "oven")
+        geom_id = self.model.body_geomadr[body_id] + self.model.body_geomnum[body_id] - 1
+        self.horno = Horno(geom_id)
+
     def actualizar(self):
         self.data.xfrc_applied[:] = 0.0
 
         for objeto in self.objetos:
             self.cambiar_cinta(objeto)
             self.empujar_pieza(objeto)
+
+        self.horno.actualizar_color(self.model)
 
         mujoco.mj_step(self.model, self.data)
 
