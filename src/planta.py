@@ -1,10 +1,14 @@
 from pathlib import Path
+
 import numpy as np
 import mujoco
 import mujoco.viewer
+import cv2
+
 from .objeto_industrial import ObjetoIndustrial
 from .cinta_transportadora import CintaTransportadora
 from .horno import Horno
+from .camara_inspeccion import CamaraInspeccion
 from . import robot
 
 
@@ -15,7 +19,7 @@ SHOW_CAMERA_MOSAIC = True
 
 CAM_W = 360
 CAM_H = 260
-CAM_FPS = 20.0
+CAM_FPS = 3.0
 
 BELT_SPEED = 0.55          # m/s, velocidad objetivo de los objetos
 
@@ -536,6 +540,7 @@ class PlantaIndustrial:
         self.data = mujoco.MjData(self.model)
         self.robot_ids = robot.get_robot_ids(self.model)
         self.robot_state = robot.new_robot_state()
+        self.ultima_captura = -1.0
         robot.initialize_robot(self.model, self.data, self.robot_ids, self.robot_state)
 
         formas = [ "cubo", "cilindro", "caja", "cilindro", "caja"]
@@ -562,6 +567,13 @@ class PlantaIndustrial:
         geom_id = self.model.body_geomadr[body_id] + self.model.body_geomnum[body_id] - 1
         self.horno = Horno(geom_id)
 
+
+        # Camaras
+        self.renderer = mujoco.Renderer(self.model, height=CAM_H, width=CAM_W)
+        nombres_camara = ["cam_bottom", "cam_right", "cam_top", "cam_left", "cam_oven"]
+        for i in range(5):
+            self.camaras.append(CamaraInspeccion(nombres_camara[i], self.cintas[i]))
+
     def actualizar(self):
         self.data.xfrc_applied[:] = 0.0
 
@@ -570,6 +582,12 @@ class PlantaIndustrial:
             self.empujar_pieza(objeto)
 
         self.horno.actualizar_color(self.model)
+
+        if self.data.time - self.ultima_captura >= 1.0 / CAM_FPS:
+            for camara in self.camaras:
+                camara.actualizar(self.renderer, self.data)
+            self.ultima_captura = self.data.time
+
 
         mujoco.mj_step(self.model, self.data)
 
