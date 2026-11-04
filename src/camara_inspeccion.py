@@ -8,6 +8,7 @@ class CamaraInspeccion:
         self.forma_detectada = None
         self.tiempo_parada = -1.0
         self.esperar_salida = False
+        self.imagen = None
 
     def capturar(self, renderer, data):
         renderer.update_scene(data, camera=self.nombre)
@@ -39,6 +40,7 @@ class CamaraInspeccion:
             self.esperar_salida = True
 
         imagen = self.capturar(renderer, data)
+        self.imagen = imagen
         self.forma_detectada = self.detectar_forma(imagen)
         self.objeto_detectado = self.forma_detectada is not None
 

@@ -24,18 +24,6 @@ CAM_FPS = 3.0
 BELT_SPEED = 0.55          # m/s, velocidad objetivo de los objetos
 
 # -----------------------------------------------------------------------------
-# BANDERAS DE MARCHA / PARO DE CADA CINTA
-# -----------------------------------------------------------------------------
-# True  -> cinta en marcha
-# False -> cinta detenida
-# Estas variables pueden modificarse directamente antes de ejecutar el programa
-# y también con las teclas 1..5 durante la simulación.
-BANDERA_CINTA_1 = True      # cinta inferior (+X)
-BANDERA_CINTA_2 = True      # cinta derecha (+Y)
-BANDERA_CINTA_3 = True      # cinta superior (-X)
-BANDERA_CINTA_4 = True      # cinta izquierda (-Y)
-BANDERA_CINTA_5 = True      # cinta hacia el horno (-X)
-
 VEL_KP = 7.0               # control de velocidad
 CENTER_KP = 12.0           # mantiene el objeto centrado en la cinta
 TURN_KP = 16.0             # ayuda a realizar el giro en las esquinas
@@ -544,7 +532,7 @@ class PlantaIndustrial:
         robot.initialize_robot(self.model, self.data, self.robot_ids, self.robot_state)
 
         formas = [ "cubo", "cilindro", "caja", "cilindro", "caja"]
-        segmentos = [0, 1, 2, 3, 0]
+        segmentos = [0, 1, 2, 3, 4]
 
         # Inicializar objetos
         for i in range(5):
@@ -553,6 +541,10 @@ class PlantaIndustrial:
             dof = self.model.jnt_dofadr[jid]
 
             self.objetos.append(ObjetoIndustrial(i, formas[i], bid, dof, segmentos[i]))
+
+        jid4 = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, "obj4_free")
+        qpos4 = self.model.jnt_qposadr[jid4]
+        self.data.qpos[qpos4 : qpos4 + 3] = [-1.8, 0.0, OBJECT_REST_Z[4]]
 
         # Inicializar cintas
         nombres = ["Cinta 1", "Cinta 2", "Cinta 3", "Cinta 4", "Cinta 5"]
@@ -587,6 +579,11 @@ class PlantaIndustrial:
             for camara in self.camaras:
                 camara.actualizar(self.renderer, self.data)
             self.ultima_captura = self.data.time
+
+            if SHOW_CAMERA_MOSAIC and self.camaras[0].imagen is not None:
+                fila1 = np.hstack([self.camaras[0].imagen, self.camaras[1].imagen, self.camaras[2].imagen])
+                fila2 = np.hstack([self.camaras[3].imagen, self.camaras[4].imagen, np.zeros_like(self.camaras[0].imagen)])
+                cv2.imshow("Camaras de la planta", np.vstack([fila1, fila2]))
 
 
         mujoco.mj_step(self.model, self.data)
@@ -624,13 +621,26 @@ class PlantaIndustrial:
         elif (objeto.segmento == 3 and pos_y <= -CORNER_SWITCH):
             objeto.actualizar_segmento(0)
 
+        elif objeto.segmento == 4 and pos_x <= OVEN_ENTRY_X:
+            self.horno.registrar_pieza()
+            jid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, f"obj{objeto.id}_free")
+            qpos_adr = self.model.jnt_qposadr[jid]
+            self.data.qpos[qpos_adr : qpos_adr + 3] = [-0.95, -LANE, OBJECT_REST_Z[objeto.id]]
+            self.data.qvel[objeto.dof_adr : objeto.dof_adr + 3] = 0.0
+            objeto.actualizar_segmento(0)
 
-    def procesar_teclado(self):
-        pass
+
+    def procesar_teclado(self, keycode=None):
+        tecla = keycode if keycode is not None else (cv2.waitKey(1) & 0xFF)
+        if ord('1') <= tecla <= ord('5'):
+            idx = tecla - ord('1')
+            self.cintas[idx].conmutar()
+            estado = "MARCHA" if self.cintas[idx].esta_activa() else "PARADA"
+            print(f"{self.cintas[idx].nombre}: {estado}")
 
     def ejecutar(self):
         self.inicializar()
-        self.visor = mujoco.viewer.launch_passive(self.model, self.data)
+        self.visor = mujoco.viewer.launch_passive(self.model, self.data, key_callback=self.procesar_teclado)
         self.visor.cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
         self.visor.cam.fixedcamid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, "overview")
 
@@ -641,3 +651,4 @@ class PlantaIndustrial:
                 self.procesar_teclado()
         finally:
             self.visor.close()
+            cv2.destroyAllWindows()
